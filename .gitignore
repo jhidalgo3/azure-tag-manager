@@ -2,3 +2,5 @@ vendor/
 scripts/
 .idea
 .vscode/
+/azure-crds.sh
+/main

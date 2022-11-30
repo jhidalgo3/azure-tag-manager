@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -18,6 +19,7 @@ const (
 var (
 	verboseEnabled bool
 	resourceGroup  string
+	subscriptionId = os.Getenv("AZURE_SUBSCRIPTION_ID")
 )
 
 func init() {
@@ -30,7 +32,8 @@ var checkCommand = &cobra.Command{
 	Use:   "check",
 	Short: "Do sanity checks on a resource group (NOT FULLY IMPLEMENTED YET)",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		sess, err := session.NewFromFile()
+		//sess, err := session.NewFromFile()
+		sess, err := session.NewFromAzureCredential(subscriptionId)
 		if err != nil {
 			return errors.Wrap(err, "could not create session")
 		}

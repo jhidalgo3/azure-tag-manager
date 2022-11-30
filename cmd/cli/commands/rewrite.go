@@ -36,7 +36,7 @@ var rewriteCommand = &cobra.Command{
 			return errors.Wrapf(err, "Can't parse rules from %s", mappingFile)
 		}
 
-		sess, err := session.NewFromFile()
+		sess, err := session.NewFromAzureCredential(subscriptionId)
 		if err != nil {
 			return errors.Wrap(err, "Could not create session")
 		}

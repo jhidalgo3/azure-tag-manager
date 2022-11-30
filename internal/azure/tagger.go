@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2018-02-01/resources"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2018-02-01/resources/resourcesapi"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/nordcloud/azure-tag-manager/internal/azure/rules"
 	"github.com/nordcloud/azure-tag-manager/internal/azure/session"
 	"github.com/pkg/errors"
@@ -20,7 +19,7 @@ type Tagger struct {
 	condMap         condFuncMap    // map of implementation of conditions
 	actionMap       actionFuncMap  // map of implementation of actions
 	dryRun          bool           // if true, actions will not be executed
-	ResourcesClient resourcesapi.ClientAPI
+	ResourcesClient *armresources.Client
 }
 
 // Matched represents rules that mathc for a resource
@@ -29,23 +28,23 @@ type Matched struct {
 	TagRules []rules.Rule
 }
 
-//ActionExecution stores information about execution of actions of a rule
+// ActionExecution stores information about execution of actions of a rule
 type ActionExecution struct {
 	ResourceID string
 	RuleName   string
 	Actions    []rules.ActionItem
 }
 
-//NewTagger creates tagger
+// NewTagger creates tagger
 func NewTagger(ruleDef rules.TagRules, session *session.AzureSession) *Tagger {
-	grClient := resources.NewClient(session.SubscriptionID)
-	grClient.Authorizer = session.Authorizer
-
+	//grClient := resources.NewClient(session.SubscriptionID)
+	//grClient.Authorizer = session.Authorizer
+	grClient, _ := armresources.NewClient(session.SubscriptionID, session.Credential, nil)
 	tagger := Tagger{
 		Session:         session,
 		Rules:           ruleDef,
 		Matched:         make(map[string]Matched),
-		ResourcesClient: &grClient,
+		ResourcesClient: grClient,
 	}
 
 	tagger.InitActionMap()
@@ -163,7 +162,10 @@ func (t *Tagger) InitCondMap() {
 	}
 
 	t.condMap["rgEqual"] = func(p map[string]string, data *Resource) bool {
+		log.Info(p["resourceGroup"], " == ", *data.ResourceGroup)
+
 		if p["resourceGroup"] == *data.ResourceGroup {
+
 			return true
 		}
 		return false
@@ -238,11 +240,11 @@ func (t Tagger) EvaluateRules(resources []Resource) {
 }
 
 func (t Tagger) deleteAllTags(id string) error {
-	genericResource := resources.GenericResource{
+	genericResource := armresources.GenericResource{
 		Tags: make(map[string]*string),
 	}
 
-	_, err := t.ResourcesClient.UpdateByID(context.Background(), id, genericResource)
+	_, err := t.ResourcesClient.BeginUpdateByID(context.Background(), id, "2021-04-01", genericResource, nil)
 	if err != nil {
 		return errors.Wrapf(err, "deleteAllTags(id=%s): UpdateByID() failed", id)
 	}
@@ -251,7 +253,7 @@ func (t Tagger) deleteAllTags(id string) error {
 
 func (t Tagger) deleteTag(id, tag string) error {
 
-	r, err := t.ResourcesClient.GetByID(context.Background(), id)
+	r, err := t.ResourcesClient.GetByID(context.Background(), id, "2021-04-01", nil)
 	if err != nil {
 		return errors.Wrapf(err, "deleteTag(id=%s, tag=%s): GetByID failed", id, tag)
 	}
@@ -261,11 +263,11 @@ func (t Tagger) deleteTag(id, tag string) error {
 	}
 
 	delete(r.Tags, tag)
-	genericResource := resources.GenericResource{
+	genericResource := armresources.GenericResource{
 		Tags: r.Tags,
 	}
 
-	_, err = t.ResourcesClient.UpdateByID(context.Background(), id, genericResource)
+	_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, "2021-04-01", genericResource, nil)
 	if err != nil {
 		return errors.Wrapf(err, "deleteTag(id=%s, tag=%s): UpdateByID() failed", id, tag)
 	}
@@ -274,7 +276,7 @@ func (t Tagger) deleteTag(id, tag string) error {
 
 func (t Tagger) createOrUpdateTag(id, tag, value string) error {
 
-	r, err := t.ResourcesClient.GetByID(context.Background(), id)
+	r, err := t.ResourcesClient.GetByID(context.Background(), id, "2021-04-01", nil)
 	if err != nil {
 		return errors.Wrap(err, "cannot get resource by id")
 	}
@@ -288,11 +290,11 @@ func (t Tagger) createOrUpdateTag(id, tag, value string) error {
 	}
 
 	r.Tags[tag] = &value
-	genericResource := resources.GenericResource{
+	genericResource := armresources.GenericResource{
 		Tags: r.Tags,
 	}
 
-	_, err = t.ResourcesClient.UpdateByID(context.Background(), id, genericResource)
+	_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, "2021-04-01", genericResource, nil)
 	if err != nil {
 		return errors.Wrap(err, "cannot update resource by id")
 	}

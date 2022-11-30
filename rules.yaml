@@ -1,0 +1,14 @@
+dryrun: true
+rules:
+- name: Tag me this
+  conditions:
+  - type: tagNotExists
+    tag: env
+  - type: regionEqual
+    region: westeurope
+  - type: rgEqual
+    resourceGroup: MAIN
+  actions:
+  - type: delTag
+    tag:  env
+    value: DEV

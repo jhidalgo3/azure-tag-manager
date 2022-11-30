@@ -1,9 +1,8 @@
 package session
 
 import (
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/pkg/errors"
 )
 
@@ -11,6 +10,7 @@ import (
 type AzureSession struct {
 	SubscriptionID string
 	Authorizer     autorest.Authorizer
+	Credential     *azidentity.DefaultAzureCredential
 }
 
 // func readJSON(path string) (*map[string]interface{}, error) {
@@ -24,8 +24,24 @@ type AzureSession struct {
 // 	return &contents, nil
 // }
 
+func NewFromAzureCredential(subscriptionId string) (*AzureSession, error) {
+	// Create a credentials object.
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "Authentication failure: %+v")
+	}
+
+	sess := AzureSession{
+		SubscriptionID: subscriptionId,
+
+		Credential: cred,
+	}
+
+	return &sess, err
+}
+
 // NewFromFile creates new session from file kept in AZURE_AUTH_LOCATION.
-func NewFromFile() (*AzureSession, error) {
+/*func NewFromFile() (*AzureSession, error) {
 	authorizer, err := auth.NewAuthorizerFromFile(azure.PublicCloud.ResourceManagerEndpoint)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get initial session")
@@ -38,4 +54,4 @@ func NewFromFile() (*AzureSession, error) {
 	}
 
 	return &sess, err
-}
+}*/

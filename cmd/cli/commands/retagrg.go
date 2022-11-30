@@ -27,7 +27,7 @@ var resourceGroupTagCommand = &cobra.Command{
 	Long:  "Takes tags form a given resource group and applies them to all of the resources in the resource group. If any existing tags are already there, the new ones with be appended.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		sess, err := session.NewFromFile()
+		sess, err := session.NewFromAzureCredential(subscriptionId)
 		if err != nil {
 			return errors.Wrap(err, "Could not create session")
 		}

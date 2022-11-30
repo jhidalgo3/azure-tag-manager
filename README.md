@@ -2,6 +2,8 @@
 [![Build Status](https://dev.azure.com/dariuszdwornikowski0297/azure-tag-manager/_apis/build/status/nordcloud.azure-tag-manager?branchName=master)](https://dev.azure.com/dariuszdwornikowski0297/azure-tag-manager/_build/latest?definitionId=1&branchName=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nordcloud/azure-tag-manager)](https://goreportcard.com/report/github.com/nordcloud/azure-tag-manager)
 
+[Manage resource groups with the Azure SDK for Go](https://learn.microsoft.com/en-us/azure/developer/go/manage-resource-groups?tabs=bash%2Cazure-portal)
+
 # Azure Tag manager 
 
 Tag manager is used to add or change tags on Azure resources on a massive scale. The tags are applied only when given rules are satisfied, for example prior existance of a certain tag, or the lack of it. 
@@ -130,6 +132,10 @@ Commands:
 
 * Azure ARM policy setting 
 * AWS support for EC2
+
+## MIGRATION AZURE GO SDK
+
+https://github.com/Azure/azure-sdk-for-go/blob/main/documentation/MIGRATION_GUIDE.md
 
 ## Licence 
 

@@ -7,8 +7,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2018-02-01/resources"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2018-02-01/resources/resourcesapi"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/nordcloud/azure-tag-manager/internal/azure/session"
 	"github.com/pkg/errors"
 )
@@ -26,12 +25,12 @@ type Restorer interface {
 
 // TagRestorer represents a restorer of Azure tags from backup
 type TagRestorer struct {
-	Session         *session.AzureSession  // session to connect to Azure
-	ResourcesClient resourcesapi.ClientAPI // client to the resources API
-	Backup          []BackupEntry          // list of backup entries
+	Session         *session.AzureSession // session to connect to Azure
+	ResourcesClient *armresources.Client  // client to the resources API
+	Backup          []BackupEntry         // list of backup entries
 }
 
-//NewBackupFromMatched makes a file backup from the resources in matched to a json file in directory
+// NewBackupFromMatched makes a file backup from the resources in matched to a json file in directory
 func NewBackupFromMatched(matched map[string]Matched, directory string) string {
 	var backup []BackupEntry
 
@@ -62,16 +61,16 @@ func NewBackupFromMatched(matched map[string]Matched, directory string) string {
 func (t TagRestorer) Restore() error {
 	for _, backupEntry := range t.Backup {
 		log.Infof("Restoring tags for [%s]\n", backupEntry.ID)
-		_, err := t.ResourcesClient.GetByID(context.Background(), backupEntry.ID)
+		_, err := t.ResourcesClient.GetByID(context.Background(), backupEntry.ID, "2021-04-01", nil)
 
 		if err != nil {
 			return errors.Wrap(err, "cannot get resource by id")
 		}
 
-		genericResource := resources.GenericResource{
+		genericResource := armresources.GenericResource{
 			Tags: backupEntry.Tags,
 		}
-		_, err = t.ResourcesClient.UpdateByID(context.Background(), backupEntry.ID, genericResource)
+		_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), backupEntry.ID, "2021-04-01", genericResource, nil)
 		if err != nil {
 			return errors.Wrapf(err, "cannot update resource %s by id", backupEntry.ID)
 		}
@@ -81,8 +80,8 @@ func (t TagRestorer) Restore() error {
 
 // NewRestorerFromFile creates a TagRestorer, which will restore tag backup from filename
 func NewRestorerFromFile(filename string, s *session.AzureSession) *TagRestorer {
-	resClient := resources.NewClient(s.SubscriptionID)
-	resClient.Authorizer = s.Authorizer
+
+	resClient, _ := armresources.NewClient(s.SubscriptionID, s.Credential, nil)
 
 	var backup []BackupEntry
 	dat, err := ioutil.ReadFile(filename)
@@ -96,7 +95,7 @@ func NewRestorerFromFile(filename string, s *session.AzureSession) *TagRestorer 
 
 	restorer := &TagRestorer{
 		Session:         s,
-		ResourcesClient: &resClient,
+		ResourcesClient: resClient,
 		Backup:          backup,
 	}
 	return restorer

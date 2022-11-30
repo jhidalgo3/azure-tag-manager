@@ -28,7 +28,7 @@ var restoreCommand = &cobra.Command{
 	Use:   "restore",
 	Short: "Restore previous tags from a file backup",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		sess, err := session.NewFromFile()
+		sess, err := session.NewFromAzureCredential(subscriptionId)
 		if err != nil {
 			return errors.Wrap(err, "could not create session")
 		}
