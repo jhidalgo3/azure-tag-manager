@@ -2,6 +2,19 @@ dryrun: true
 rules:
 - name: Tag me this
   conditions:
+  - type: tagExists
+    tag: env
+  - type: regionEqual
+    region: westeurope
+  - type: rgEqual
+    resourceGroup: MAIN
+  actions:
+  - type: delTag
+    tag:  env1
+    value: DEV1
+    
+- name: Networks
+  conditions:
   - type: tagNotExists
     tag: env
   - type: regionEqual
@@ -10,5 +23,5 @@ rules:
     resourceGroup: MAIN
   actions:
   - type: addTag
-    tag:  env
-    value: DEV
+    tag:  env1
+    value: DEV1

@@ -1,12 +1,10 @@
-
-[![Build Status](https://dev.azure.com/dariuszdwornikowski0297/azure-tag-manager/_apis/build/status/nordcloud.azure-tag-manager?branchName=master)](https://dev.azure.com/dariuszdwornikowski0297/azure-tag-manager/_build/latest?definitionId=1&branchName=master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/nordcloud/azure-tag-manager)](https://goreportcard.com/report/github.com/nordcloud/azure-tag-manager)
-
-[Manage resource groups with the Azure SDK for Go](https://learn.microsoft.com/en-us/azure/developer/go/manage-resource-groups?tabs=bash%2Cazure-portal)
-
 # Azure Tag manager 
 
 Tag manager is used to add or change tags on Azure resources on a massive scale. The tags are applied only when given rules are satisfied, for example prior existance of a certain tag, or the lack of it. 
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/jhidalgo3/azure-tag-manager)](https://goreportcard.com/report/github.com/jhidalgo3/azure-tag-manager)
+
+[Manage resource groups with the Azure SDK for Go](https://learn.microsoft.com/en-us/azure/developer/go/manage-resource-groups?tabs=bash%2Cazure-portal)
 
 ## Download
 
@@ -17,15 +15,16 @@ You can download a binary for your architecture from the releases page.
 To use it you need to create Azure service principal. Create service principal file:
 
 ```bash
-az ad sp create-for-rbac --sdk-auth > my.auth
+az ad sp create-for-rbac
 ```
 and export path to the authorizer:
 
 ```bash
-export AZURE_AUTH_LOCATION=my.auth
+export AZURE_SUBSCRIPTION_ID=<CHANGE_ME>
+export AZURE_TENANT_ID=<CHANGE_ME>
+export AZURE_CLIENT_ID=<CHANGE_ME>
+export AZURE_CLIENT_SECRET=<CHANGE_ME>
 ```
-
-`beta`: Using cli authorizer is in works.
 
 ## How it works ?
 
@@ -128,19 +127,11 @@ Commands:
 
 * `retagrg` - Takes tags form a given resource group (`--rg`) and applies them to all of the resources in the resource group. If any existing tags are already there, the new ones with be appended. Adding `--cleantags` will clean ALL the tags on resources before adding new ones. 
 
-## Todo 
-
-* Azure ARM policy setting 
-* AWS support for EC2
-
 ## MIGRATION AZURE GO SDK
 
-https://github.com/Azure/azure-sdk-for-go/blob/main/documentation/MIGRATION_GUIDE.md
+[Upgrade to Azure GO SDK](https://github.com/Azure/azure-sdk-for-go/blob/main/documentation/MIGRATION_GUIDE.md)
 
-## Licence 
-
-MIT licence.
+## Thanks 
 
 Author(s): Dariusz Dwornikowski (@tdi)
-
 Made by Nordcloud in Poznań with ♥. 

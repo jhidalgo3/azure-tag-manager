@@ -8,7 +8,7 @@ pool:
 
 variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
-  GOROOT: '/usr/local/go1.13' # Go installation path
+  GOROOT: '/usr/local/go1.18' # Go installation path
   GOPATH: '/gopath' # Go workspace path
   GOARCH: amd64
   GO111MODULE: on
@@ -52,8 +52,8 @@ steps:
   displayName: ‘Create GitHub Release’
   inputs:
     action: 'create'
-    githubConnection: tdi
-    repositoryName: nordcloud/azure-tag-manager
+    githubConnection: jhidalgo3
+    repositoryName: jhidalgo3/azure-tag-manager
     tagSource: 'auto'
     addChangeLog: true
 

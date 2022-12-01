@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2018-02-01/resources"
-	"github.com/nordcloud/azure-tag-manager/internal/azure/rules"
-	"github.com/nordcloud/azure-tag-manager/mocks"
+	"github.com/jhidalgo3/azure-tag-manager/internal/azure/rules"
+	"github.com/jhidalgo3/azure-tag-manager/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
