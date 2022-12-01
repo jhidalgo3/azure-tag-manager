@@ -63,14 +63,11 @@ func NewResourceGroupScanner(s *session.AzureSession) *ResourceGroupScanner {
 func (r ResourceGroupScanner) ScanResourceGroup(rg string) []Resource {
 	tab := make([]Resource, 0)
 
-	pager := r.GroupsClient.NewListPager(nil)
-
-	//var resourceGroups []*armresources.ResourceGroup
-
+	pager := r.ResourcesClient.NewListByResourceGroupPager(rg, nil)
 	for pager.More() {
 		resp, _ := pager.NextPage(context.Background())
-		if resp.ResourceGroupListResult.Value != nil {
-			for _, resource := range resp.ResourceGroupListResult.Value {
+		if resp.ResourceListResult.Value != nil {
+			for _, resource := range resp.ResourceListResult.Value {
 				//resourceGroups = append(resourceGroups, resp.ResourceGroupListResult.Value...)
 				tab = append(tab, Resource{
 					Platform:      "azure",
@@ -149,6 +146,8 @@ func (r ResourceGroupScanner) GetGroups() ([]string, error) {
 				//resourceGroups = append(resourceGroups, resp.ResourceGroupListResult.Value...)
 				rgName := *resource.Name
 				tab = append(tab, rgName)
+
+				log.Info("rgName: ", rgName)
 			}
 		}
 	}

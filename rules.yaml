@@ -9,6 +9,6 @@ rules:
   - type: rgEqual
     resourceGroup: MAIN
   actions:
-  - type: delTag
+  - type: addTag
     tag:  env
     value: DEV

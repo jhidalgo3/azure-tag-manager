@@ -275,8 +275,8 @@ func (t Tagger) deleteTag(id, tag string) error {
 }
 
 func (t Tagger) createOrUpdateTag(id, tag, value string) error {
-
-	r, err := t.ResourcesClient.GetByID(context.Background(), id, "2021-04-01", nil)
+	log.Info("-- createOrUpdateTag ")
+	r, err := t.ResourcesClient.GetByID(context.Background(), id, "2022-04-01", nil)
 	if err != nil {
 		return errors.Wrap(err, "cannot get resource by id")
 	}
@@ -294,7 +294,10 @@ func (t Tagger) createOrUpdateTag(id, tag, value string) error {
 		Tags: r.Tags,
 	}
 
+	log.Info("**** ", r.Type)
+
 	_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, "2021-04-01", genericResource, nil)
+
 	if err != nil {
 		return errors.Wrap(err, "cannot update resource by id")
 	}
