@@ -1,7 +1,7 @@
 package azure
 
 import (
-	"github.com/nordcloud/azure-tag-manager/internal/azure/session"
+	"github.com/jhidalgo3/azure-tag-manager/internal/azure/session"
 )
 
 // TagChecker represents an Azure checker
@@ -16,7 +16,7 @@ type SameTagDifferentValue struct {
 }
 
 // CheckSameTagDifferentValue checks if resources in resources are tagged with the same tag but with different values. It returns a map of lists of such resources. The key to the list is tag key.
-//TODO: make this differently
+// TODO: make this differently
 func (t TagChecker) CheckSameTagDifferentValue(resources []Resource) map[string][]SameTagDifferentValue {
 
 	var (

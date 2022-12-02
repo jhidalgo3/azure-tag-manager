@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/nordcloud/azure-tag-manager/internal/azure/session"
+	"github.com/jhidalgo3/azure-tag-manager/internal/azure/session"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )

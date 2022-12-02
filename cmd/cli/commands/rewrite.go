@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 
-	"github.com/nordcloud/azure-tag-manager/internal/azure"
-	"github.com/nordcloud/azure-tag-manager/internal/azure/rules"
-	"github.com/nordcloud/azure-tag-manager/internal/azure/session"
+	"github.com/jhidalgo3/azure-tag-manager/internal/azure"
+	"github.com/jhidalgo3/azure-tag-manager/internal/azure/rules"
+	"github.com/jhidalgo3/azure-tag-manager/internal/azure/session"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

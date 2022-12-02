@@ -2,15 +2,14 @@ package session
 
 import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/go-autorest/autorest"
 	"github.com/pkg/errors"
 )
 
 // AzureSession stores subscription id and Authorized object
 type AzureSession struct {
 	SubscriptionID string
-	Authorizer     autorest.Authorizer
-	Credential     *azidentity.DefaultAzureCredential
+
+	Credential *azidentity.DefaultAzureCredential
 }
 
 // func readJSON(path string) (*map[string]interface{}, error) {

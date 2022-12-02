@@ -3,23 +3,27 @@ package azure
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/nordcloud/azure-tag-manager/internal/azure/rules"
-	"github.com/nordcloud/azure-tag-manager/internal/azure/session"
+	"github.com/jhidalgo3/azure-tag-manager/internal/azure/rules"
+	"github.com/jhidalgo3/azure-tag-manager/internal/azure/session"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
 // Tagger reprents the maing tagging element
 type Tagger struct {
-	Session         *session.AzureSession
-	Matched         map[string]Matched
-	Rules           rules.TagRules // list of rules
-	condMap         condFuncMap    // map of implementation of conditions
-	actionMap       actionFuncMap  // map of implementation of actions
-	dryRun          bool           // if true, actions will not be executed
-	ResourcesClient *armresources.Client
+	Session               *session.AzureSession
+	Matched               map[string]Matched
+	Rules                 rules.TagRules // list of rules
+	condMap               condFuncMap    // map of implementation of conditions
+	actionMap             actionFuncMap  // map of implementation of actions
+	dryRun                bool           // if true, actions will not be executed
+	ResourcesClient       *armresources.Client
+	VirtualNetworksClient *armnetwork.VirtualNetworksClient
 }
 
 // Matched represents rules that mathc for a resource
@@ -39,12 +43,17 @@ type ActionExecution struct {
 func NewTagger(ruleDef rules.TagRules, session *session.AzureSession) *Tagger {
 	//grClient := resources.NewClient(session.SubscriptionID)
 	//grClient.Authorizer = session.Authorizer
+
+	//grClient, _ := armresources.NewClient(session.SubscriptionID, session.Credential, nil)
 	grClient, _ := armresources.NewClient(session.SubscriptionID, session.Credential, nil)
+	networkClient, _ := armnetwork.NewVirtualNetworksClient(session.SubscriptionID, session.Credential, nil)
+
 	tagger := Tagger{
-		Session:         session,
-		Rules:           ruleDef,
-		Matched:         make(map[string]Matched),
-		ResourcesClient: grClient,
+		Session:               session,
+		Rules:                 ruleDef,
+		Matched:               make(map[string]Matched),
+		ResourcesClient:       grClient,
+		VirtualNetworksClient: networkClient,
 	}
 
 	tagger.InitActionMap()
@@ -240,11 +249,13 @@ func (t Tagger) EvaluateRules(resources []Resource) {
 }
 
 func (t Tagger) deleteAllTags(id string) error {
+	apiVersion := getAPIVersion(id)
+
 	genericResource := armresources.GenericResource{
 		Tags: make(map[string]*string),
 	}
 
-	_, err := t.ResourcesClient.BeginUpdateByID(context.Background(), id, "2021-04-01", genericResource, nil)
+	_, err := t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, genericResource, nil)
 	if err != nil {
 		return errors.Wrapf(err, "deleteAllTags(id=%s): UpdateByID() failed", id)
 	}
@@ -252,8 +263,9 @@ func (t Tagger) deleteAllTags(id string) error {
 }
 
 func (t Tagger) deleteTag(id, tag string) error {
+	apiVersion := getAPIVersion(id)
 
-	r, err := t.ResourcesClient.GetByID(context.Background(), id, "2021-04-01", nil)
+	r, err := t.ResourcesClient.GetByID(context.Background(), id, apiVersion, nil)
 	if err != nil {
 		return errors.Wrapf(err, "deleteTag(id=%s, tag=%s): GetByID failed", id, tag)
 	}
@@ -267,7 +279,7 @@ func (t Tagger) deleteTag(id, tag string) error {
 		Tags: r.Tags,
 	}
 
-	_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, "2021-04-01", genericResource, nil)
+	_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, genericResource, nil)
 	if err != nil {
 		return errors.Wrapf(err, "deleteTag(id=%s, tag=%s): UpdateByID() failed", id, tag)
 	}
@@ -276,7 +288,10 @@ func (t Tagger) deleteTag(id, tag string) error {
 
 func (t Tagger) createOrUpdateTag(id, tag, value string) error {
 	log.Info("-- createOrUpdateTag ")
-	r, err := t.ResourcesClient.GetByID(context.Background(), id, "2022-04-01", nil)
+
+	apiVersion := getAPIVersion(id)
+
+	r, err := t.ResourcesClient.GetByID(context.Background(), id, apiVersion, nil)
 	if err != nil {
 		return errors.Wrap(err, "cannot get resource by id")
 	}
@@ -289,14 +304,24 @@ func (t Tagger) createOrUpdateTag(id, tag, value string) error {
 		r.Tags = make(map[string]*string)
 	}
 
+	log.Info("**** ", *r.Type)
 	r.Tags[tag] = &value
-	genericResource := armresources.GenericResource{
+	/*genericResource := armresources.GenericResource{
 		Tags: r.Tags,
+	}*/
+
+	if *r.Type == "Microsoft.Network/virtualNetworks" {
+		log.Info(" Using - VirtualNetworksClient")
+
+		detail, _ := ParseResourceID(id)
+
+		t.VirtualNetworksClient.UpdateTags(context.Background(), detail.resourceGroup, detail.resourceName, armnetwork.TagsObject{
+			Tags: r.Tags,
+		}, nil)
+
+	} else {
+		_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, r.GenericResource, nil)
 	}
-
-	log.Info("**** ", r.Type)
-
-	_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, "2021-04-01", genericResource, nil)
 
 	if err != nil {
 		return errors.Wrap(err, "cannot update resource by id")
@@ -326,4 +351,50 @@ func (t *Tagger) Eval(data *Resource, p rules.ConditionItem) bool {
 	}
 	log.Warnf("Unknown condition type %s - ignoring", p.GetType())
 	return false
+}
+
+func getAPIVersion(id string) string {
+	var apiVersion = "2021-04-01"
+	if strings.Contains(id, "microsoft.insights") {
+		apiVersion = "2022-04-01"
+	} else if strings.Contains(id, "Microsoft.Network") {
+		apiVersion = "2022-01-01"
+	}
+
+	log.Info("apiVersion: ", apiVersion, "\n\t", id)
+	return apiVersion
+}
+
+// ResourceDetails contains details about an Azure resource
+type ResourceDetails struct {
+	subscription  string
+	resourceGroup string
+	provider      string
+	resourceType  string
+	resourceName  string
+}
+
+// ParseResourceID parses a resource ID into a ResourceDetails struct
+func ParseResourceID(resourceID string) (ResourceDetails, error) {
+
+	const resourceIDPatternText = `(?i)subscriptions/(.+)/resourceGroups/(.+)/providers/(.+?)/(.+?)/(.+)`
+	resourceIDPattern := regexp.MustCompile(resourceIDPatternText)
+	match := resourceIDPattern.FindStringSubmatch(resourceID)
+
+	if len(match) == 0 {
+		return ResourceDetails{}, fmt.Errorf("parsing failed for %s. Invalid resource Id format", resourceID)
+	}
+
+	v := strings.Split(match[5], "/")
+	resourceName := v[len(v)-1]
+
+	result := ResourceDetails{
+		subscription:  match[1],
+		resourceGroup: match[2],
+		provider:      match[3],
+		resourceType:  match[4],
+		resourceName:  resourceName,
+	}
+
+	return result, nil
 }

@@ -6,8 +6,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/nordcloud/azure-tag-manager/internal/azure"
-	"github.com/nordcloud/azure-tag-manager/internal/azure/session"
+	"github.com/jhidalgo3/azure-tag-manager/internal/azure"
+	"github.com/jhidalgo3/azure-tag-manager/internal/azure/session"
 )
 
 const (
