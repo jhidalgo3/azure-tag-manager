@@ -275,11 +275,9 @@ func (t Tagger) deleteTag(id, tag string) error {
 	}
 
 	delete(r.Tags, tag)
-	genericResource := armresources.GenericResource{
-		Tags: r.Tags,
-	}
 
-	_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, genericResource, nil)
+	err = t.updateTags(id, r, r.Tags, apiVersion)
+
 	if err != nil {
 		return errors.Wrapf(err, "deleteTag(id=%s, tag=%s): UpdateByID() failed", id, tag)
 	}
@@ -296,9 +294,11 @@ func (t Tagger) createOrUpdateTag(id, tag, value string) error {
 		return errors.Wrap(err, "cannot get resource by id")
 	}
 
-	if _, ok := r.Tags[tag]; ok {
+	//Force Update Tags
+	/*if _, ok := r.Tags[tag]; ok {
+		log.Warn(ok)
 		return nil
-	}
+	}*/
 
 	if r.Tags == nil {
 		r.Tags = make(map[string]*string)
@@ -310,19 +310,7 @@ func (t Tagger) createOrUpdateTag(id, tag, value string) error {
 		Tags: r.Tags,
 	}*/
 
-	if *r.Type == "Microsoft.Network/virtualNetworks" {
-		log.Info(" Using - VirtualNetworksClient")
-
-		detail, _ := ParseResourceID(id)
-
-		t.VirtualNetworksClient.UpdateTags(context.Background(), detail.resourceGroup, detail.resourceName, armnetwork.TagsObject{
-			Tags: r.Tags,
-		}, nil)
-
-	} else {
-		_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, r.GenericResource, nil)
-	}
-
+	err = t.updateTags(id, r, r.Tags, apiVersion)
 	if err != nil {
 		return errors.Wrap(err, "cannot update resource by id")
 	}
@@ -363,6 +351,25 @@ func getAPIVersion(id string) string {
 
 	log.Info("apiVersion: ", apiVersion, "\n\t", id)
 	return apiVersion
+}
+
+func (t *Tagger) updateTags(id string, r armresources.ClientGetByIDResponse, tags map[string]*string, apiVersion string) error {
+	var err error
+
+	if *r.Type == "Microsoft.Network/virtualNetworks" {
+		log.Info(" Using - VirtualNetworksClient")
+
+		detail, _ := ParseResourceID(id)
+
+		t.VirtualNetworksClient.UpdateTags(context.Background(), detail.resourceGroup, detail.resourceName, armnetwork.TagsObject{
+			Tags: r.Tags,
+		}, nil)
+
+	} else {
+		_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, r.GenericResource, nil)
+	}
+
+	return err
 }
 
 // ResourceDetails contains details about an Azure resource

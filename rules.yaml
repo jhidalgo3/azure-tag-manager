@@ -4,13 +4,15 @@ rules:
   conditions:
   #- type: tagExists
   #  tag: env
-  #- type: regionEqual
-  #  region: westeurope
-  #- type: rgEqual
-  #  resourceGroup: MAIN
-  #actions:
-  #- type: delTag
-  #  tag:  env1
+  - type: regionEqual
+    region: westeurope
+  - type: rgEqual
+    resourceGroup: MAIN
+  actions:
+  - type: delTag
+    tag:  env1
+  - type: delTag
+    tag: env 
   #  value: DEV1
 
 - name: Networks
@@ -22,9 +24,9 @@ rules:
   - type: rgEqual
     resourceGroup: MAIN
   actions:
-  - type: addTag
+  - type: delTag
     tag:  env2
-    value: DEV---bbbb
+    value: DEV---dddd
 
 #- name: Clean
 #  conditions:
