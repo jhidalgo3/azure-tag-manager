@@ -6,11 +6,11 @@ rules:
   #  tag: env
   - type: regionEqual
     region: westeurope
-  - type: rgEqual
-    resourceGroup: MAIN
+  #- type: rgEqual
+  #  resourceGroup: MAIN
   actions:
   - type: delTag
-    tag:  env1
+    tag:  RETAG
   - type: delTag
     tag: env 
   #  value: DEV1

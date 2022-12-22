@@ -121,17 +121,32 @@ Commands:
 
 * `rewrite` - mode where tagmanager will retag the resources based on mapping given in a mapping file input (specified with `-m filepath` flag). If `--dry` flag is given, the tagging actions will not be executed
 
+```
+go run cmd/cli/main.go rewrite -m rules.yaml -v
+```
+
 * `restore` - restores tags backed up in a file, supplied by `-f filepath` flag
 
 * `check` - (EXPERIMENTAL) does some basic sanity checks on the resource group given as `--rg` flag 
 
 * `retagrg` - Takes tags form a given resource group (`--rg`) and applies them to all of the resources in the resource group. If any existing tags are already there, the new ones with be appended. Adding `--cleantags` will clean ALL the tags on resources before adding new ones. 
 
+```
+go run cmd/cli/main.go retagrg -r <RESOURCE_NAME> -v
+```
+
+
+## RUNNING
+
+
+
 ## MIGRATION AZURE GO SDK
 
 [Upgrade to Azure GO SDK](https://github.com/Azure/azure-sdk-for-go/blob/main/documentation/MIGRATION_GUIDE.md)
 
 ## Thanks 
+
+Original code from:
 
 Author(s): Dariusz Dwornikowski (@tdi)
 Made by Nordcloud in Poznań with ♥. 

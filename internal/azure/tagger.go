@@ -249,7 +249,10 @@ func (t Tagger) EvaluateRules(resources []Resource) {
 }
 
 func (t Tagger) deleteAllTags(id string) error {
-	apiVersion := getAPIVersion(id)
+	apiVersion, notSupport := getAPIVersion(id)
+	if notSupport {
+		return nil
+	}
 
 	genericResource := armresources.GenericResource{
 		Tags: make(map[string]*string),
@@ -263,7 +266,12 @@ func (t Tagger) deleteAllTags(id string) error {
 }
 
 func (t Tagger) deleteTag(id, tag string) error {
-	apiVersion := getAPIVersion(id)
+
+	apiVersion, notSupport := getAPIVersion(id)
+	if notSupport {
+		log.Warn("NOT SUPPORT TO", id)
+		return nil
+	}
 
 	r, err := t.ResourcesClient.GetByID(context.Background(), id, apiVersion, nil)
 	if err != nil {
@@ -287,7 +295,10 @@ func (t Tagger) deleteTag(id, tag string) error {
 func (t Tagger) createOrUpdateTag(id, tag, value string) error {
 	log.Info("-- createOrUpdateTag ")
 
-	apiVersion := getAPIVersion(id)
+	apiVersion, notSupport := getAPIVersion(id)
+	if notSupport {
+		return nil
+	}
 
 	r, err := t.ResourcesClient.GetByID(context.Background(), id, apiVersion, nil)
 	if err != nil {
@@ -341,16 +352,22 @@ func (t *Tagger) Eval(data *Resource, p rules.ConditionItem) bool {
 	return false
 }
 
-func getAPIVersion(id string) string {
+func getAPIVersion(id string) (string, bool) {
 	var apiVersion = "2021-04-01"
+	var notSupport = false
+
 	if strings.Contains(id, "microsoft.insights") {
 		apiVersion = "2022-04-01"
 	} else if strings.Contains(id, "Microsoft.Network") {
 		apiVersion = "2022-01-01"
+	} else if strings.Contains(id, "Microsoft.EventHub") {
+		apiVersion = "2021-11-01"
+	} else if strings.Contains(id, "Microsoft.Network/networkInterfaces") {
+		notSupport = true
 	}
 
 	log.Info("apiVersion: ", apiVersion, "\n\t", id)
-	return apiVersion
+	return apiVersion, notSupport
 }
 
 func (t *Tagger) updateTags(id string, r armresources.ClientGetByIDResponse, tags map[string]*string, apiVersion string) error {
@@ -365,6 +382,17 @@ func (t *Tagger) updateTags(id string, r armresources.ClientGetByIDResponse, tag
 			Tags: r.Tags,
 		}, nil)
 
+	} else if *r.Type == "Microsoft.Network" {
+		//c, _ := armnetwork.NewPrivateEndpointsClient(t.Session.SubscriptionID, t.Session.Credential, nil)
+
+		//detail, _ := ParseResourceID(id)
+
+		genericResource := armresources.GenericResource{
+			Tags: r.Tags,
+		}
+
+		//c.BeginCreateOrUpdate(context.Background(), detail.resourceGroup, detail.resourceName, r.GenericResource, nil)
+		_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, genericResource, nil)
 	} else {
 		_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, r.GenericResource, nil)
 	}
