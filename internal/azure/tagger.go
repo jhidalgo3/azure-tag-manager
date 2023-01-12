@@ -8,6 +8,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 	"github.com/jhidalgo3/azure-tag-manager/internal/azure/rules"
 	"github.com/jhidalgo3/azure-tag-manager/internal/azure/session"
 	"github.com/pkg/errors"
@@ -24,6 +25,7 @@ type Tagger struct {
 	dryRun                bool           // if true, actions will not be executed
 	ResourcesClient       *armresources.Client
 	VirtualNetworksClient *armnetwork.VirtualNetworksClient
+	StorageClient         *armstorage.AccountsClient
 }
 
 // Matched represents rules that mathc for a resource
@@ -47,6 +49,7 @@ func NewTagger(ruleDef rules.TagRules, session *session.AzureSession) *Tagger {
 	//grClient, _ := armresources.NewClient(session.SubscriptionID, session.Credential, nil)
 	grClient, _ := armresources.NewClient(session.SubscriptionID, session.Credential, nil)
 	networkClient, _ := armnetwork.NewVirtualNetworksClient(session.SubscriptionID, session.Credential, nil)
+	storageClient, _ := armstorage.NewAccountsClient(session.SubscriptionID, session.Credential, nil)
 
 	tagger := Tagger{
 		Session:               session,
@@ -54,6 +57,7 @@ func NewTagger(ruleDef rules.TagRules, session *session.AzureSession) *Tagger {
 		Matched:               make(map[string]Matched),
 		ResourcesClient:       grClient,
 		VirtualNetworksClient: networkClient,
+		StorageClient:         storageClient,
 	}
 
 	tagger.InitActionMap()
@@ -254,14 +258,41 @@ func (t Tagger) deleteAllTags(id string) error {
 		return nil
 	}
 
-	genericResource := armresources.GenericResource{
-		Tags: make(map[string]*string),
+	r, err := t.ResourcesClient.GetByID(context.Background(), id, apiVersion, nil)
+	if err != nil {
+		return errors.Wrapf(err, "deleteAllTags(id=%s): GetByID failed", id)
 	}
 
-	_, err := t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, genericResource, nil)
-	if err != nil {
-		return errors.Wrapf(err, "deleteAllTags(id=%s): UpdateByID() failed", id)
+	if *r.Type == "Microsoft.Network/virtualNetworks" {
+		log.Info(" Using - VirtualNetworksClient")
+
+		detail, _ := ParseResourceID(id)
+
+		t.VirtualNetworksClient.UpdateTags(context.Background(), detail.resourceGroup, detail.resourceName, armnetwork.TagsObject{
+			Tags: make(map[string]*string),
+		}, nil)
+
+	} else if *r.Type == "Microsoft.Storage/storageAccounts" {
+
+		log.Info(" Using - storageClient")
+
+		detail, _ := ParseResourceID(id)
+
+		t.StorageClient.Update(context.Background(), detail.resourceGroup, detail.resourceName, armstorage.AccountUpdateParameters{
+			Tags: make(map[string]*string),
+		}, nil)
+
+	} else {
+		genericResource := armresources.GenericResource{
+			Tags: make(map[string]*string),
+		}
+
+		_, err := t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, genericResource, nil)
+		if err != nil {
+			return errors.Wrapf(err, "deleteAllTags(id=%s): UpdateByID() failed", id)
+		}
 	}
+
 	return nil
 }
 

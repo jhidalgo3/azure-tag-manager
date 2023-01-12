@@ -6,27 +6,28 @@ rules:
   #  tag: env
   - type: regionEqual
     region: westeurope
-  #- type: rgEqual
-  #  resourceGroup: MAIN
-  actions:
-  - type: delTag
-    tag:  RETAG
-  - type: delTag
-    tag: env 
-  #  value: DEV1
-
-- name: Networks
-  conditions:
-  #- type: tagExists
-  #  tag: env
-  - type: regionEqual
-    region: westeurope
   - type: rgEqual
     resourceGroup: MAIN
   actions:
   - type: delTag
-    tag:  env2
-    value: DEV---dddd
+    tag:  RETAG
+    value: DEV
+  #- type: delTag
+  #  tag: env 
+  ##  value: DEV1
+
+#- name: Networks
+#  conditions:
+#  #- type: tagExists
+#  #  tag: env
+#  - type: regionEqual
+#    region: westeurope
+#  - type: rgEqual
+#    resourceGroup: MAIN
+#  actions:
+#  - type: delTag
+#    tag:  env2
+#    value: DEV---dddd
 
 #- name: Clean
 #  conditions:
