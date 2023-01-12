@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/redis/armredis"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 	"github.com/jhidalgo3/azure-tag-manager/internal/azure/rules"
@@ -26,6 +27,7 @@ type Tagger struct {
 	ResourcesClient       *armresources.Client
 	VirtualNetworksClient *armnetwork.VirtualNetworksClient
 	StorageClient         *armstorage.AccountsClient
+	RedisClient           *armredis.Client
 }
 
 // Matched represents rules that mathc for a resource
@@ -50,6 +52,7 @@ func NewTagger(ruleDef rules.TagRules, session *session.AzureSession) *Tagger {
 	grClient, _ := armresources.NewClient(session.SubscriptionID, session.Credential, nil)
 	networkClient, _ := armnetwork.NewVirtualNetworksClient(session.SubscriptionID, session.Credential, nil)
 	storageClient, _ := armstorage.NewAccountsClient(session.SubscriptionID, session.Credential, nil)
+	redisClient, _ := armredis.NewClient(session.SubscriptionID, session.Credential, nil)
 
 	tagger := Tagger{
 		Session:               session,
@@ -58,6 +61,7 @@ func NewTagger(ruleDef rules.TagRules, session *session.AzureSession) *Tagger {
 		ResourcesClient:       grClient,
 		VirtualNetworksClient: networkClient,
 		StorageClient:         storageClient,
+		RedisClient:           redisClient,
 	}
 
 	tagger.InitActionMap()
@@ -393,6 +397,8 @@ func getAPIVersion(id string) (string, bool) {
 		apiVersion = "2022-01-01"
 	} else if strings.Contains(id, "Microsoft.EventHub") {
 		apiVersion = "2021-11-01"
+	} else if strings.Contains(id, "Microsoft.Cache/Redis") {
+		apiVersion = "2022-06-01"
 	} else if strings.Contains(id, "Microsoft.Network/networkInterfaces") {
 		notSupport = true
 	}
@@ -424,6 +430,16 @@ func (t *Tagger) updateTags(id string, r armresources.ClientGetByIDResponse, tag
 
 		//c.BeginCreateOrUpdate(context.Background(), detail.resourceGroup, detail.resourceName, r.GenericResource, nil)
 		_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, genericResource, nil)
+	} else if *r.Type == "Microsoft.Cache/Redis" {
+		{
+			log.Info("Microsoft.Cache/Redis: ", apiVersion, "\n\t", id)
+			detail, _ := ParseResourceID(id)
+
+			t.RedisClient.Update(context.Background(), detail.resourceGroup, detail.resourceName, armredis.UpdateParameters{
+				Tags: r.Tags,
+			}, nil)
+
+		}
 	} else {
 		_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, r.GenericResource, nil)
 	}
