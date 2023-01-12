@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/operationsmanagement/armoperationsmanagement"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/redis/armredis"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
@@ -18,16 +19,17 @@ import (
 
 // Tagger reprents the maing tagging element
 type Tagger struct {
-	Session               *session.AzureSession
-	Matched               map[string]Matched
-	Rules                 rules.TagRules // list of rules
-	condMap               condFuncMap    // map of implementation of conditions
-	actionMap             actionFuncMap  // map of implementation of actions
-	dryRun                bool           // if true, actions will not be executed
-	ResourcesClient       *armresources.Client
-	VirtualNetworksClient *armnetwork.VirtualNetworksClient
-	StorageClient         *armstorage.AccountsClient
-	RedisClient           *armredis.Client
+	Session                   *session.AzureSession
+	Matched                   map[string]Matched
+	Rules                     rules.TagRules // list of rules
+	condMap                   condFuncMap    // map of implementation of conditions
+	actionMap                 actionFuncMap  // map of implementation of actions
+	dryRun                    bool           // if true, actions will not be executed
+	ResourcesClient           *armresources.Client
+	VirtualNetworksClient     *armnetwork.VirtualNetworksClient
+	StorageClient             *armstorage.AccountsClient
+	RedisClient               *armredis.Client
+	OperationManagementClient *armoperationsmanagement.SolutionsClient
 }
 
 // Matched represents rules that mathc for a resource
@@ -53,15 +55,17 @@ func NewTagger(ruleDef rules.TagRules, session *session.AzureSession) *Tagger {
 	networkClient, _ := armnetwork.NewVirtualNetworksClient(session.SubscriptionID, session.Credential, nil)
 	storageClient, _ := armstorage.NewAccountsClient(session.SubscriptionID, session.Credential, nil)
 	redisClient, _ := armredis.NewClient(session.SubscriptionID, session.Credential, nil)
+	solutionsClient, _ := armoperationsmanagement.NewSolutionsClient(session.SubscriptionID, session.Credential, nil)
 
 	tagger := Tagger{
-		Session:               session,
-		Rules:                 ruleDef,
-		Matched:               make(map[string]Matched),
-		ResourcesClient:       grClient,
-		VirtualNetworksClient: networkClient,
-		StorageClient:         storageClient,
-		RedisClient:           redisClient,
+		Session:                   session,
+		Rules:                     ruleDef,
+		Matched:                   make(map[string]Matched),
+		ResourcesClient:           grClient,
+		VirtualNetworksClient:     networkClient,
+		StorageClient:             storageClient,
+		RedisClient:               redisClient,
+		OperationManagementClient: solutionsClient,
 	}
 
 	tagger.InitActionMap()
@@ -286,6 +290,16 @@ func (t Tagger) deleteAllTags(id string) error {
 			Tags: make(map[string]*string),
 		}, nil)
 
+	} else if *r.Type == "Microsoft.OperationsManagement/solutions" {
+
+		log.Info(" Using - operationsManagement/solutions")
+
+		detail, _ := ParseResourceID(id)
+
+		t.OperationManagementClient.BeginUpdate(context.Background(), detail.resourceGroup, detail.resourceName, armoperationsmanagement.SolutionPatch{
+			Tags: make(map[string]*string),
+		}, nil)
+
 	} else {
 		genericResource := armresources.GenericResource{
 			Tags: make(map[string]*string),
@@ -399,7 +413,13 @@ func getAPIVersion(id string) (string, bool) {
 		apiVersion = "2021-11-01"
 	} else if strings.Contains(id, "Microsoft.Cache/Redis") {
 		apiVersion = "2022-06-01"
+	} else if strings.Contains(id, "Microsoft.OperationsManagement") {
+		apiVersion = "2015-11-01-preview"
 	} else if strings.Contains(id, "Microsoft.Network/networkInterfaces") {
+		notSupport = true
+	} else if strings.Contains(id, "extensions/AzureNetworkWatcherExtension") {
+		notSupport = true
+	} else if strings.Contains(id, "extensions/enablevmaccess") {
 		notSupport = true
 	}
 
@@ -431,15 +451,23 @@ func (t *Tagger) updateTags(id string, r armresources.ClientGetByIDResponse, tag
 		//c.BeginCreateOrUpdate(context.Background(), detail.resourceGroup, detail.resourceName, r.GenericResource, nil)
 		_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, genericResource, nil)
 	} else if *r.Type == "Microsoft.Cache/Redis" {
-		{
-			log.Info("Microsoft.Cache/Redis: ", apiVersion, "\n\t", id)
-			detail, _ := ParseResourceID(id)
 
-			t.RedisClient.Update(context.Background(), detail.resourceGroup, detail.resourceName, armredis.UpdateParameters{
-				Tags: r.Tags,
-			}, nil)
+		log.Info("Microsoft.Cache/Redis: ", apiVersion, "\n\t", id)
+		detail, _ := ParseResourceID(id)
 
-		}
+		t.RedisClient.Update(context.Background(), detail.resourceGroup, detail.resourceName, armredis.UpdateParameters{
+			Tags: r.Tags,
+		}, nil)
+
+	} else if *r.Type == "Microsoft.OperationsManagement/solutions" {
+		log.Info("OperationsManagement/solutions: ", apiVersion, "\n\t", id)
+
+		detail, _ := ParseResourceID(id)
+
+		t.OperationManagementClient.BeginUpdate(context.Background(), detail.resourceGroup, detail.resourceName, armoperationsmanagement.SolutionPatch{
+			Tags: r.Tags,
+		}, nil)
+
 	} else {
 		_, err = t.ResourcesClient.BeginUpdateByID(context.Background(), id, apiVersion, r.GenericResource, nil)
 	}
